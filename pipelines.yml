@@ -1,0 +1,50 @@
+resources:
+- name: Or_Geva_react_1_gitResource
+  type: GitRepo
+  configuration:
+    path: Or-Geva/react-1
+    gitProvider: github_Or_Geva_react_1_integration
+    buildOn:
+      pullRequestCreate: true
+    branches:
+      include: master
+pipelines:
+- name: Or_Geva_react_1_pipeline
+  configuration:
+    runtime:
+      type: image
+      image:
+        custom:
+          name: releases-docker.jfrog.io/jfrog/jfrog-cli-full
+          tag: latest
+  steps:
+  - name: Build
+    type: Bash
+    configuration:
+      inputResources:
+      - name: Or_Geva_react_1_gitResource
+      integrations:
+      - name: rt_Or_Geva_react_1_integration
+    execution:
+      onExecute:
+      - cd $res_Or_Geva_react_1_gitResource_resourcePath
+      - export CI=true
+      - export JFROG_CLI_BUILD_NAME=react-1-master
+      - export JFROG_CLI_BUILD_NUMBER=$run_number
+      - export JFROG_CLI_BUILD_URL=$step_url
+      - export JFROG_BUILD_RESULTS=PASS
+      - jfrog c add Or_Geva_react_1_serverId --artifactory-url $int_rt_Or_Geva_react_1_integration_url
+        --user $int_rt_Or_Geva_react_1_integration_user --apikey $int_rt_Or_Geva_react_1_integration_apikey
+        --enc-password=false
+      - jfrog rt npm-config --server-id-resolve Or_Geva_react_1_serverId --repo-resolve
+        npm-virtual
+      - jfrog rt npm install
+      - jfrog rt bag
+      - jfrog rt bce
+      - jfrog rt bp
+      onComplete:
+      - update_commit_status Or_Geva_react_1_gitResource
+      onFailure:
+      - export JFROG_BUILD_RESULTS=FAIL
+      - jfrog rt bce
+      - jfrog rt bp
